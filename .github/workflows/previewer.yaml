@@ -19,7 +19,14 @@ jobs:
         with:
           node-version-file: "package.json"
           cache: pnpm
+
+      - name: Configure pnpm for standalone build
+        # needed when using pnpm, otherwise packages are missing in build output
+        run: |
+          echo "node-linker=hoisted" >> .npmrc
+          echo "shamefully-hoist=true" >> .npmrc
       - run: pnpm install --frozen-lockfile
+
       - run: pnpm build
         env:
           NEXT_BASE_PATH: /${{ env.PREVIEW_ID }}
@@ -40,3 +47,4 @@ jobs:
           path: .next/standalone/
           retention-days: 7
           if-no-files-found: error
+          include-hidden-files: true
