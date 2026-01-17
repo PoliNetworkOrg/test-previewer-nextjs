@@ -1,0 +1,42 @@
+name: Previewer
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build-preview:
+    runs-on: ubuntu-latest
+    env:
+      PREVIEW_ID: ${{ github.event.repository.name }}-pr-${{ github.event.pull_request.number }}
+
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: "package.json"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+        env:
+          NEXT_BASE_PATH: /${{ env.PREVIEW_ID }}
+          NODE_ENV: production
+
+      - name: Prepare standalone bundle
+        # see https://nextjs.org/docs/app/api-reference/config/next-config-js/output#automatically-copying-traced-files
+        run: |
+          cp -r .next/static .next/standalone/.next/
+          if [ -d "public" ]; then
+            cp -r public .next/standalone/
+          fi
+          
+      - name: Upload standalone bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-${{ env.PREVIEW_ID }}
+          path: .next/standalone/
+          retention-days: 7
+          if-no-files-found: error
